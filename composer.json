@@ -1,0 +1,11 @@
+{
+    "name": "mneuhaus/archi",
+    "description": "Library to helps to create and modify code in various languages",
+    "authors": [
+        {
+            "name": "Marc Neuhaus",
+            "email": "mneuhaus@famelo.com"
+        }
+    ],
+    "require": {}
+}
