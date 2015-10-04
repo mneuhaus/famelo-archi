@@ -7,5 +7,16 @@
             "email": "mneuhaus@famelo.com"
         }
     ],
-    "require": {}
+    "autoload": {
+        "psr-4": {
+            "Famelo\\Archi\\": "src/"
+        }
+    },
+    "require": {
+        "nikic/php-parser": "dev-master"
+    },
+	"require-dev": {
+		"phpunit/phpunit": "*",
+		"mikey179/vfsStream": "*"
+	}
 }
