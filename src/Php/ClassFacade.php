@@ -4,6 +4,7 @@ namespace Famelo\Archi\Php;
 
 use Famelo\Archi\Core\BuilderInterface;
 use Famelo\Archi\Php\Printer\TYPO3Printer;
+use Famelo\Archi\Php\Reflection\ReflectionMethod;
 use PhpParser\BuilderFactory;
 use PhpParser\ParserFactory;
 
@@ -39,7 +40,7 @@ class ClassFacade extends AbstractFacade {
 		$prettyPrinter = new TYPO3Printer;
 
 		try {
-			$code = $prettyPrinter->prettyPrint($this->statements);
+			$code = '<?php ' .  chr(10) . $prettyPrinter->prettyPrint($this->statements);
 			file_put_contents($this->filepath, $code);
 		} catch (Error $e) {
 			echo 'Parse Error: ', $e->getMessage();
@@ -55,10 +56,38 @@ class ClassFacade extends AbstractFacade {
 		}
 	}
 
-	public function addMethod($name, $template = 'public function foo(){}') {
+	public function addMethod($name, $template = '
+		/**
+		 * @return void
+		 */
+		public function foo(){}') {
 		$methodStatement = current($this->parse($template, 'method'));
 		$methodStatement->name = $name;
 		$this->getClassStatement()->stmts[] = $methodStatement;
+	}
+
+	public function removeMethod($name) {
+		$classStatement = $this->getClassStatement();
+		foreach ($classStatement->stmts as $key => $childStatement) {
+			if ($childStatement instanceof \PhpParser\Node\Stmt\ClassMethod) {
+				if ($childStatement->name == $name) {
+					unset($classStatement->stmts[$key]);
+					break;
+				}
+			}
+		}
+	}
+
+	public function renameMethod($oldName, $newName) {
+		$classStatement = $this->getClassStatement();
+		foreach ($classStatement->stmts as $key => $childStatement) {
+			if ($childStatement instanceof \PhpParser\Node\Stmt\ClassMethod) {
+				if ($childStatement->name == $oldName) {
+					$childStatement->name = $newName;
+					break;
+				}
+			}
+		}
 	}
 
 	public function setClassName($className) {
@@ -94,7 +123,11 @@ class ClassFacade extends AbstractFacade {
 
 	public function getMethods() {
 		$statements = $this->getMethodStatements();
-		var_dump($statements);
+		$methods = array();
+		foreach ($statements as $statement) {
+			$methods[] = new ReflectionMethod($statement, $this->getClassName());
+		}
+		return $methods;
 	}
 
 	public function getClassStatement() {
@@ -104,6 +137,18 @@ class ClassFacade extends AbstractFacade {
 				return $classStatement;
 			}
 		}
+	}
+
+	public function getClassName() {
+		return $this->getNamespace() . '\\' . $this->getName();
+	}
+
+	public function getName() {
+		return $this->getClassStatement()->name;
+	}
+
+	public function getNamespace() {
+		return $this->getNamespaceStatement()->name->toString();
 	}
 
 	public function getNamespaceStatement() {
