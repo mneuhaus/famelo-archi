@@ -36,12 +36,16 @@ class ClassFacade extends AbstractFacade {
 		$this->filepath = $filepath;
 	}
 
-	public function save() {
+	public function save($targetFileName = NULL) {
 		$prettyPrinter = new TYPO3Printer;
+
+		if (!file_exists(dirname($targetFileName))) {
+			mkdir(dirname($targetFileName), 0775, TRUE);
+		}
 
 		try {
 			$code = '<?php ' .  chr(10) . $prettyPrinter->prettyPrint($this->statements);
-			file_put_contents($this->filepath, $code);
+			file_put_contents($targetFileName, $code);
 		} catch (Error $e) {
 			echo 'Parse Error: ', $e->getMessage();
 		}
@@ -52,7 +56,7 @@ class ClassFacade extends AbstractFacade {
 		if ($namespaceStatement === NULL) {
 			$this->statements[] = $this->factory->namespace($namespace)->getNode();
 		} else {
-			// $namespaceStatement->name = $namespace;
+			$namespaceStatement->name = new \PhpParser\Node\Name(explode('\\', $namespace));
 		}
 	}
 
@@ -95,6 +99,8 @@ class ClassFacade extends AbstractFacade {
 		if ($classStatement === NULL) {
 			$classStatement = $this->factory->class($className)->getNode();
 			$this->getNamespaceStatement()->stmts[] = $classStatement;
+		} else {
+			$classStatement->name = $className;
 		}
 	}
 
