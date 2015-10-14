@@ -5,6 +5,7 @@ namespace Famelo\Archi\Php;
 use Famelo\Archi\Core\BuilderInterface;
 use Famelo\Archi\Php\Printer\TYPO3Printer;
 use Famelo\Archi\Php\Reflection\ReflectionMethod;
+use Famelo\Archi\Php\Reflection\ReflectionProperty;
 use PhpParser\BuilderFactory;
 use PhpParser\ParserFactory;
 
@@ -34,21 +35,6 @@ class ClassFacade extends AbstractFacade {
 			$this->statements = $this->parser->parse(file_get_contents($filepath));
 		}
 		$this->filepath = $filepath;
-	}
-
-	public function save($targetFileName = NULL) {
-		$prettyPrinter = new TYPO3Printer;
-
-		if (!file_exists(dirname($targetFileName))) {
-			mkdir(dirname($targetFileName), 0775, TRUE);
-		}
-
-		try {
-			$code = '<?php ' .  chr(10) . $prettyPrinter->prettyPrint($this->statements);
-			file_put_contents($targetFileName, $code);
-		} catch (Error $e) {
-			echo 'Parse Error: ', $e->getMessage();
-		}
 	}
 
 	public function setNamespace($namespace) {
@@ -104,18 +90,6 @@ class ClassFacade extends AbstractFacade {
 		}
 	}
 
-	public function getPropertyStatements() {
-		$classStatement = $this->getClassStatement();
-		$propertyStatements = array();
-		foreach ($classStatement->stmts as $childStatement) {
-			if ($childStatement instanceof \PhpParser\Node\Stmt\Property) {
-				$property = new ReflectionProperty($childStatement);
-				$propertyStatements[$property->getName()] = $property;
-			}
-		}
-		return $propertyStatements;
-	}
-
 	public function getMethodStatements() {
 		$classStatement = $this->getClassStatement();
 		$methodStatements = array();
@@ -132,6 +106,26 @@ class ClassFacade extends AbstractFacade {
 		$methods = array();
 		foreach ($statements as $statement) {
 			$methods[] = new ReflectionMethod($statement, $this->getClassName());
+		}
+		return $methods;
+	}
+
+	public function getPropertyStatements() {
+		$classStatement = $this->getClassStatement();
+		$propertyStatements = array();
+		foreach ($classStatement->stmts as $childStatement) {
+			if ($childStatement instanceof \PhpParser\Node\Stmt\Property) {
+				$propertyStatements[] = $childStatement;
+			}
+		}
+		return $propertyStatements;
+	}
+
+	public function getProperties() {
+		$statements = $this->getPropertyStatements();
+		$methods = array();
+		foreach ($statements as $statement) {
+			$methods[] = new ReflectionProperty($statement, $this->getClassName());
 		}
 		return $methods;
 	}
@@ -166,6 +160,77 @@ class ClassFacade extends AbstractFacade {
 		}
 	}
 
+	public function addProperty($name, $template = '
+		/**
+		 * @var string
+		 */
+		protected $foo;
+
+		public function getFoo() {
+			return $this->foo;
+		}
+
+		public function setFoo($foo) {
+			$this->foo = $foo;
+		}
+		', $codeReplacements = array()) {
+
+		if (empty($codeReplacements)) {
+			$codeReplacements = array(
+				'foo' => lcfirst($name),
+				'Foo' => ucfirst($name)
+			);
+		}
+
+		$template = str_replace(array_keys($codeReplacements), $codeReplacements, $template);
+
+		foreach ($this->parse($template, 'property') as $statement) {
+			$this->getClassStatement()->stmts[] = $statement;
+		}
+	}
+
+	public function removeProperty($name) {
+		$relatedMethods = array(
+			'get' . ucfirst($name),
+			'set' . ucfirst($name)
+		);
+		$classStatement = $this->getClassStatement();
+		foreach ($classStatement->stmts as $key => $childStatement) {
+			if ($childStatement instanceof \PhpParser\Node\Stmt\Property) {
+				if ($childStatement->props[0]->name == $name) {
+					unset($classStatement->stmts[$key]);
+				}
+			}
+			if ($childStatement instanceof \PhpParser\Node\Stmt\ClassMethod) {
+				if (in_array($childStatement->name, $relatedMethods)) {
+					unset($classStatement->stmts[$key]);
+				}
+			}
+		}
+	}
+
+	public function renameProperty($oldName, $newName) {
+		$relatedMethods = array(
+			'get' . ucfirst($oldName),
+			'set' . ucfirst($oldName)
+		);
+		$classStatement = $this->getClassStatement();
+		foreach ($classStatement->stmts as $key => $childStatement) {
+			if ($childStatement instanceof \PhpParser\Node\Stmt\Property) {
+				if ($childStatement->props[0]->name == $oldName) {
+					$childStatement->props[0]->name = $newName;
+				}
+			}
+			if ($childStatement instanceof \PhpParser\Node\Stmt\ClassMethod) {
+				if (in_array($childStatement->name, $relatedMethods)) {
+					$classStatement->stmts[$key] = $this->replaceStrings($childStatement, array(
+						$oldName => $newName,
+						ucfirst($oldName) => ucfirst($newName)
+					), 'method');
+				}
+			}
+		}
+	}
 }
 
 ?>

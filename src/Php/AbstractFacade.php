@@ -35,8 +35,24 @@ abstract class AbstractFacade implements FacadeInterface {
 		$this->filepath = $filepath;
 	}
 
+	public function save($targetFileName = NULL) {
+		$prettyPrinter = new TYPO3Printer;
+
+		if (!file_exists(dirname($targetFileName))) {
+			mkdir(dirname($targetFileName), 0775, TRUE);
+		}
+
+		try {
+			$code = '<?php ' .  chr(10) . $prettyPrinter->prettyPrint($this->statements);
+			file_put_contents($targetFileName, $code);
+		} catch (Error $e) {
+			echo 'Parse Error: ', $e->getMessage();
+		}
+	}
+
 	public function parse($code, $type = 'file') {
 		switch ($type) {
+			case 'property':
 			case 'method':
 					$code = '<?php class foo {' . $code . '}';
 				break;
@@ -45,6 +61,7 @@ abstract class AbstractFacade implements FacadeInterface {
 		$statements = $this->parser->parse($code);
 
 		switch ($type) {
+			case 'property':
 			case 'method':
 					$statements = $statements[0]->stmts;
 				break;
@@ -52,6 +69,12 @@ abstract class AbstractFacade implements FacadeInterface {
 		return $statements;
 	}
 
+	public function replaceStrings($statement, $replacements, $type="file") {
+		$prettyPrinter = new TYPO3Printer;
+		$code = $prettyPrinter->prettyPrint(array($statement));
+		$code = str_replace(array_keys($replacements), $replacements, $code);
+		return current($this->parse($code, $type));
+	}
 }
 
 ?>
