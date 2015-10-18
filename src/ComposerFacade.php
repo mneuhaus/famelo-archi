@@ -31,7 +31,7 @@ class ComposerFacade implements FacadeInterface {
 
 	public function setNamespace($namespace, $path) {
 		$this->data['autoload']['psr-4'] = array(
-			$namespace => $path
+			$namespace => trim($path, '\\') . '\\'
 		);
 	}
 

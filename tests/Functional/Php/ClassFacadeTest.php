@@ -26,7 +26,7 @@ class ClassBuilderTest extends \PHPUnit_Framework_TestCase {
 		$builder->setNamespace('Hello\World');
 		$builder->setClassName('Foo');
 		$builder->addMethod('test');
-		$builder->save();
+		$builder->save($filepath);
 
 		$generatedCode = file_get_contents($filepath);
 		$this->assertContains('namespace Hello\World;', $generatedCode);

@@ -160,26 +160,27 @@ class ClassFacade extends AbstractFacade {
 		}
 	}
 
-	public function addProperty($name, $template = '
-		/**
-		 * @var string
-		 */
-		protected $foo;
+	public function addProperty($name, $template = NULL, $codeReplacements = array()) {
+		if ($template === NULL) {
+			$template = '
+				/**
+				 * @var propertyType
+				 */
+				protected $foo;
 
-		public function getFoo() {
-			return $this->foo;
-		}
+				public function getFoo() {
+					return $this->foo;
+				}
 
-		public function setFoo($foo) {
-			$this->foo = $foo;
-		}
-		', $codeReplacements = array()) {
+				public function setFoo($foo) {
+					$this->foo = $foo;
+				}
+			';
 
-		if (empty($codeReplacements)) {
-			$codeReplacements = array(
+			$codeReplacements = array_replace(array(
 				'foo' => lcfirst($name),
 				'Foo' => ucfirst($name)
-			);
+			), $codeReplacements);
 		}
 
 		$template = str_replace(array_keys($codeReplacements), $codeReplacements, $template);
