@@ -28,7 +28,7 @@ class ClassFacade extends AbstractFacade {
 	 */
 	protected $statements = array();
 
-	public function __construct($filepath) {
+	public function __construct($filepath, $code = NULL) {
 		$this->parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
 		$this->factory = new BuilderFactory;
 		if (file_exists($filepath)) {
@@ -92,6 +92,9 @@ class ClassFacade extends AbstractFacade {
 
 	public function getMethodStatements() {
 		$classStatement = $this->getClassStatement();
+		if (!is_object($classStatement)) {
+			return array();
+		}
 		$methodStatements = array();
 		foreach ($classStatement->stmts as $childStatement) {
 			if ($childStatement instanceof \PhpParser\Node\Stmt\ClassMethod) {
@@ -132,6 +135,9 @@ class ClassFacade extends AbstractFacade {
 
 	public function getClassStatement() {
 		$namespaceStatement = $this->getNamespaceStatement();
+		if (!is_object($namespaceStatement)) {
+			return;
+		}
 		foreach ($namespaceStatement->stmts as $classStatement) {
 			if ($classStatement instanceof \PhpParser\Node\Stmt\Class_) {
 				return $classStatement;
@@ -144,11 +150,15 @@ class ClassFacade extends AbstractFacade {
 	}
 
 	public function getName() {
-		return $this->getClassStatement()->name;
+		if (is_object($this->getClassStatement())) {
+			return $this->getClassStatement()->name;
+		}
 	}
 
 	public function getNamespace() {
-		return $this->getNamespaceStatement()->name->toString();
+		if (is_object($this->getNamespaceStatement())) {
+			return $this->getNamespaceStatement()->name->toString();
+		}
 	}
 
 	public function getNamespaceStatement() {
