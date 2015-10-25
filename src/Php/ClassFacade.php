@@ -28,7 +28,7 @@ class ClassFacade extends AbstractFacade {
 	 */
 	protected $statements = array();
 
-	public function __construct($filepath, $code = NULL) {
+	public function __construct($filepath) {
 		$this->parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
 		$this->factory = new BuilderFactory;
 		if (file_exists($filepath)) {
