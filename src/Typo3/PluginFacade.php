@@ -52,9 +52,19 @@ class PluginFacade implements FacadeInterface {
 	public $cachedControllers = array();
 
 	/**
-	 * @var string
+	 * @var array
 	 */
 	public $uncachedControllers = array();
+
+	/**
+	 * @var string
+	 */
+	public $defaultController;
+
+	/**
+	 * @var string
+	 */
+	public $defaultAction;
 
 	/**
 	 * @var string
@@ -84,8 +94,19 @@ class PluginFacade implements FacadeInterface {
 			$this->name = $pluginConfiguration['name'];
 			$this->oldName = $pluginConfiguration['name'];
 			$this->cachedControllers = $pluginConfiguration['cachedControllers'];
+			foreach ($this->cachedControllers as $controllerName => $actions) {
+				$this->cachedControllers[$controllerName] = explode(',', $actions);
+			}
 			$this->uncachedControllers = $pluginConfiguration['uncachedControllers'];
+			foreach ($this->uncachedControllers as $controllerName => $actions) {
+				$this->uncachedControllers[$controllerName] = explode(',', $actions);
+			}
 			$this->configurationCode = $pluginConfiguration['code'];
+
+			if (count($this->cachedControllers) > 0) {
+				$this->defaultController = String::cutSuffix(key($this->cachedControllers), 'Controller');
+				$this->defaultAction = reset($this->cachedControllers[$this->defaultController . 'Controller']);
+			}
 		}
 
 		$extTablesFacade = new ExtTablesFacade($basepath);
@@ -103,12 +124,12 @@ class PluginFacade implements FacadeInterface {
 	public function save() {
 		$cachedControllers = array();
 		foreach ($this->cachedControllers as $controllerName => $actions) {
-			$cachedControllers[String::addSuffix($controllerName, 'Controller')] = $actions;
+			$cachedControllers[String::addSuffix($controllerName, 'Controller')] = implode(',', $actions);
 		}
 
 		$uncachedControllers = array();
 		foreach ($this->uncachedControllers as $controllerName => $actions) {
-			$uncachedControllers[String::addSuffix($controllerName, 'Controller')] = $actions;
+			$uncachedControllers[String::addSuffix($controllerName, 'Controller')] = implode(',', $actions);
 		}
 
 		$arguments = array(
@@ -152,6 +173,47 @@ class PluginFacade implements FacadeInterface {
 		$extTablesFacade = new ExtTablesFacade($this->basepath);
 		$extTablesFacade->removeCode($this->registrationCode);
 		$extTablesFacade->save();
+	}
+
+	public function addAction($controllerName, $action, $uncached = FALSE) {
+		$controllerName = String::addSuffix($controllerName, 'Controller');
+		$action = String::cutSuffix($action, 'Action');
+		$actions = array();
+		if (isset($this->cachedControllers[$controllerName])) {
+			$actions = $this->cachedControllers[$controllerName];
+		}
+		$actions[] = $action;
+		$this->cachedControllers[$controllerName] = $actions;
+
+		if ($uncached === FALSE) {
+			return;
+		}
+
+		$actions = array();
+		if (isset($this->uncachedControllers[$controllerName])) {
+			$actions = $this->uncachedControllers[$controllerName];
+		}
+		$actions[] = $action;
+		$this->uncachedControllers[$controllerName] = $actions;
+	}
+
+	public function setDefaultAction($controllerName, $action) {
+		$controllerName = String::addSuffix($controllerName, 'Controller');
+
+		$controllerItem = $this->cachedControllers[$controllerName];
+		unset($this->cachedControllers[$controllerName]);
+		$this->cachedControllers = array_merge(
+			array($controllerName => $controllerItem),
+			$this->cachedControllers
+		);
+
+
+		$actionIndex = array_search($action, $this->cachedControllers[$controllerName]);
+		unset($this->cachedControllers[$controllerName][$actionIndex]);
+		array_unshift(
+			$this->cachedControllers[$controllerName],
+			$action
+		);
 	}
 }
 

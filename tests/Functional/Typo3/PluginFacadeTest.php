@@ -62,10 +62,10 @@ class PluginFacadeTest extends \PHPUnit_Framework_TestCase {
 		$this->assertEquals('SomeCompany', $facade->company);
 		$this->assertEquals('SomeTitle', $facade->title);
 		$this->assertEquals(array(
-			'SomeController' => 'foo,bar'
+			'SomeController' => array('foo', 'bar')
 		), $facade->cachedControllers);
 		$this->assertEquals(array(
-			'SomeOtherController' => 'foo,bar'
+			'SomeOtherController' => array('foo', 'bar')
 		), $facade->uncachedControllers);
 	}
 
@@ -80,10 +80,10 @@ class PluginFacadeTest extends \PHPUnit_Framework_TestCase {
 		$facade->company = 'SomeCompany';
 		$facade->title = 'SomeTitle';
 		$facade->cachedControllers = array(
-			'SomeController' => 'foo,bar'
+			'SomeController' => array('foo', 'bar')
 		);
 		$facade->uncachedControllers = array(
-			'SomeOtherController' => 'foo,bar'
+			'SomeOtherController' => array('foo', 'bar')
 		);
 		$facade->save();
 
@@ -92,10 +92,10 @@ class PluginFacadeTest extends \PHPUnit_Framework_TestCase {
 		$this->assertEquals('SomeCompany', $generatedFacade->company);
 		$this->assertEquals('SomeTitle', $generatedFacade->title);
 		$this->assertEquals(array(
-			'SomeController' => 'foo,bar'
+			'SomeController' => array('foo', 'bar')
 		), $generatedFacade->cachedControllers);
 		$this->assertEquals(array(
-			'SomeOtherController' => 'foo,bar'
+			'SomeOtherController' => array('foo', 'bar')
 		), $generatedFacade->uncachedControllers);
 	}
 
@@ -113,8 +113,6 @@ class PluginFacadeTest extends \PHPUnit_Framework_TestCase {
 		$this->assertNotContains('SomePlugin', file_get_contents(vfsStream::url('root/ext_tables.php')));
 	}
 
-
-
 	/**
 	 * @test
 	 */
@@ -127,10 +125,10 @@ class PluginFacadeTest extends \PHPUnit_Framework_TestCase {
 		$facade->company = 'NewCompany';
 		$facade->title = 'NewTitle';
 		$facade->cachedControllers = array(
-			'NewController' => 'foo,bar'
+			'NewController' => array('foo', 'bar')
 		);
 		$facade->uncachedControllers = array(
-			'NewOtherController' => 'foo,bar'
+			'NewOtherController' => array('foo', 'bar')
 		);
 		$facade->save();
 
@@ -139,13 +137,57 @@ class PluginFacadeTest extends \PHPUnit_Framework_TestCase {
 		$this->assertEquals('NewCompany', $generatedFacade->company);
 		$this->assertEquals('NewTitle', $generatedFacade->title);
 		$this->assertEquals(array(
-			'NewController' => 'foo,bar'
+			'NewController' => array('foo', 'bar')
 		), $generatedFacade->cachedControllers);
 		$this->assertEquals(array(
-			'NewOtherController' => 'foo,bar'
+			'NewOtherController' => array('foo', 'bar')
 		), $generatedFacade->uncachedControllers);
 
 		$this->assertNotContains('SomePlugin', file_get_contents(vfsStream::url('root/ext_localconf.php')));
 		$this->assertNotContains('SomePlugin', file_get_contents(vfsStream::url('root/ext_tables.php')));
+	}
+
+	/**
+	 * @test
+	 */
+	public function addActionsThroughMethod() {
+		$path = vfsStream::url('root');
+		$this->mockPlugin();
+
+		$facade = new PluginFacade('SomePlugin', $path);
+		$facade->addAction('Some', 'foobar', FALSE);
+		$facade->addAction('New', 'foo', FALSE);
+		$facade->addAction('New', 'bar', TRUE);
+		$facade->save();
+
+		$generatedFacade = new PluginFacade('SomePlugin', $path);
+		$this->assertEquals(array(
+			'SomeController' => array('foo', 'bar', 'foobar'),
+			'NewController' => array('foo', 'bar')
+		), $generatedFacade->cachedControllers);
+		$this->assertEquals(array(
+			'SomeOtherController' => array('foo', 'bar'),
+			'NewController' => array('bar')
+		), $generatedFacade->uncachedControllers);
+	}
+
+	/**
+	 * @test
+	 */
+	public function setDefaultAction() {
+		$path = vfsStream::url('root');
+		$this->mockPlugin();
+
+		$facade = new PluginFacade('SomePlugin', $path);
+		$facade->addAction('After', 'first');
+		$facade->addAction('After', 'second');
+		$facade->setDefaultAction('After', 'second');
+		$facade->save();
+
+		$generatedFacade = new PluginFacade('SomePlugin', $path);
+		$this->assertEquals(array(
+			'AfterController' => array('second', 'first'),
+			'SomeController' => array('foo', 'bar')
+		), $generatedFacade->cachedControllers);
 	}
 }
