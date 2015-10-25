@@ -6,6 +6,8 @@ use Famelo\Archi\Core\FacadeInterface;
 use Famelo\Archi\Php\ClassFacade;
 use Famelo\Archi\Utility\Path;
 use Famelo\Archi\Utility\String;
+use PhpParser\BuilderFactory;
+use PhpParser\ParserFactory;
 
 
 /**
@@ -63,16 +65,19 @@ class FooController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController {
 	 */
 	public $actions = array();
 
-	public function __construct($filepath) {
-		parent::__construct($filepath);
-		if (!file_exists($filepath)) {
-			return;
-		}
-		$this->name = $this->getName();
-		$this->namespace = $this->getNamespace();
+	public function __construct($filepath = NULL) {
+		if ($filepath !== NULL && file_exists($filepath)) {
+			parent::__construct($filepath);
+			$this->name = $this->getName();
+			$this->namespace = $this->getNamespace();
 
-		foreach ($this->getMethods() as $method) {
-			$this->actions[] = String::cutSuffix($method->getName(), 'Action');
+			foreach ($this->getMethods() as $method) {
+				$this->actions[] = String::cutSuffix($method->getName(), 'Action');
+			}
+		} else {
+			$this->parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+			$this->factory = new BuilderFactory;
+			$this->statements = $this->parser->parse(self::TEMPLATE_CONTROLLER);
 		}
 	}
 
@@ -100,7 +105,7 @@ class FooController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController {
 	public function save($targetPath = 'Classes/Controller/') {
 		$className = ucfirst(String::addSuffix($this->name, 'Controller'));
 		$targetFileName = $targetPath . $className . '.php';
-		if ($targetFileName !== $this->filepath) {
+		if ($targetFileName !== $this->filepath && file_exists($this->filepath)) {
 			unlink($this->filepath);
 		}
 		// $composer = new ComposerFacade('composer.json');

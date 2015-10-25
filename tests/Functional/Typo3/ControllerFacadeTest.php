@@ -5,7 +5,7 @@ use Famelo\Archi\Typo3\ControllerFacade;
 use org\bovigo\vfs\vfsStream;
 
 /**
- * Class ClassBuilderTest
+ * Class ControllerFacadeTest
  */
 class ControllerFacadeTest extends \PHPUnit_Framework_TestCase {
 
@@ -52,6 +52,25 @@ class ControllerFacadeTest extends \PHPUnit_Framework_TestCase {
 		), $facade->actions);
 		$this->assertTrue($facade->hasAction('index'));
 		$this->assertFalse($facade->hasAction('bar'));
+	}
+
+	/**
+	 * @test
+	 */
+	public function createController() {
+		$facade = new ControllerFacade();
+		$facade->name = 'FooController';
+		$facade->namespace = 'Foo\Bar\Controller';
+		$facade->addAction('bar');
+		$facade->save(vfsStream::url('root/'));
+
+		$facade = new ControllerFacade(vfsStream::url('root/FooController.php'));
+		$this->assertEquals('FooController', $facade->name);
+		$this->assertEquals('Foo\Bar\Controller', $facade->namespace);
+		$this->assertEquals(array(
+			'bar'
+		), $facade->actions);
+		$this->assertTrue($facade->hasAction('bar'));
 	}
 
 	/**
