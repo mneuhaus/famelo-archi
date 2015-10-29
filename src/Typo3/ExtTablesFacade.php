@@ -69,12 +69,36 @@ if (!defined(\'TYPO3_MODE\')) {
 		}
 	}
 
+	public function getFunctions($pattern, $keyIndex = NULL) {
+		preg_match_all($pattern, $this->filecontent, $matches);
+		$results = array();
+		foreach ($matches[1] as $key => $match) {
+			$code = '
+				$_EXTKEY = "";
+				return array(' . trim($match, '()') . ');
+			';
+			$data = eval($code);
+			if ($keyIndex !== NULL) {
+				$results[$data[$keyIndex]] = array(
+					'code' => $matches[0][$key],
+					'data' => $data
+				);
+			} else {
+				$results[] = array(
+					'code' => $matches[0][$key],
+					'data' => $data
+				);
+			}
+		}
+		return $results;
+	}
+
 	public function updateCode($oldCode, $newCode) {
 		$this->filecontent = str_replace($oldCode, $newCode, $this->filecontent);
 	}
 
 	public function addCode($code) {
-		$this->filecontent.= chr(10) . chr(10) . trim($code, chr(10)) . chr(10);
+		$this->filecontent.= chr(10) . trim($code, chr(10)) . chr(10);
 	}
 
 	public function removeCode($code) {
@@ -84,7 +108,7 @@ if (!defined(\'TYPO3_MODE\')) {
 	/**
 	 */
 	public function save() {
-		file_put_contents($this->filepath, $this->filecontent);
+		file_put_contents($this->filepath, trim($this->filecontent));
 	}
 }
 
